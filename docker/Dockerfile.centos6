@@ -1,0 +1,38 @@
+FROM centos:6.10
+
+ENV CMAKE_VERSION_BASE 3.8
+ENV CMAKE_VERSION $CMAKE_VERSION_BASE.2
+
+# Update as we need to use the vault now.
+RUN sed -i -e 's/^mirrorlist/#mirrorlist/g' -e 's/^#baseurl=http:\/\/mirror.centos.org\/centos\/$releasever\//baseurl=http:\/\/vault.centos.org\/6.10\//g' /etc/yum.repos.d/CentOS-Base.repo
+
+# install dependencies
+RUN yum install -y epel-release
+RUN yum install -y \
+ apr-devel \
+ autoconf \
+ automake \
+ git \
+ glibc-devel \
+ libtool \
+ lksctp-tools \
+ lsb-core \
+ make \
+ openssl-devel \
+ tar \
+ gcc \
+ gcc-c++ \
+ wget
+
+RUN wget -q https://cmake.org/files/v$CMAKE_VERSION_BASE/cmake-$CMAKE_VERSION-Linux-x86_64.tar.gz && tar zxf cmake-$CMAKE_VERSION-Linux-x86_64.tar.gz && mv cmake-$CMAKE_VERSION-Linux-x86_64 /opt/ && echo 'PATH=/opt/cmake-$CMAKE_VERSION-Linux-x86_64/bin:$PATH' >> ~/.bashrc
+
+ARG java_version=adopt@1.8.0-272
+ENV JAVA_VERSION $java_version
+# installing java with jabba
+RUN curl -sL https://github.com/shyiko/jabba/raw/master/install.sh | JABBA_COMMAND="install $JAVA_VERSION -o /jdk" bash
+
+RUN echo 'export JAVA_HOME="/jdk"' >> ~/.bashrc
+RUN echo 'PATH=/jdk/bin:$PATH' >> ~/.bashrc
+
+# when the JDK is GraalVM install native-image
+RUN if [ -O /jdk/bin/gu ]; then /jdk/bin/gu install native-image; else echo "Not GraalVM, skip installation of native-image" ; fi
